@@ -1,0 +1,23 @@
+{
+  "name": "ekome-storytelling",
+  "version": "1.0.0",
+  "description": "Voice-first conversational storytelling and memory companion.",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "build:web": "pnpm --filter @workspace/ekome run build",
+    "build:api": "pnpm --filter @workspace/api-server run build",
+    "dev:web": "pnpm --filter @workspace/ekome run dev",
+    "dev:api": "pnpm --filter @workspace/api-server run dev",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --if-present run typecheck"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.4",
+    "typescript": "~5.9.3"
+  }
+}

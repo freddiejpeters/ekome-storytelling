@@ -1,0 +1,734 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: eKoMe API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: openai
+    description: OpenAI AI chat, audio, and conversation operations
+  - name: ekome
+    description: eKoMe-specific conversation management
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /openai/conversations:
+    get:
+      operationId: listConversations
+      tags: [openai]
+      summary: List all conversations
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Natural-language search query
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Conversation"
+    post:
+      operationId: createConversation
+      tags: [openai]
+      summary: Create a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationInput"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+
+  /openai/conversations/{id}:
+    get:
+      operationId: getConversation
+      tags: [openai]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    patch:
+      operationId: updateConversation
+      tags: [openai]
+      summary: Update conversation title or metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationUpdate"
+      responses:
+        "200":
+          description: Updated conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Conversation"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteConversation
+      tags: [openai]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /openai/conversations/{id}/messages:
+    get:
+      operationId: listMessages
+      tags: [openai]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+    post:
+      operationId: sendMessage
+      tags: [openai]
+      summary: Send a text message and receive a streaming AI response
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "200":
+          description: SSE stream of assistant text chunks
+          content:
+            text/event-stream: {}
+
+  /openai/conversations/{id}/transcribe:
+    post:
+      operationId: transcribeAudio
+      tags: [openai]
+      summary: Transcribe audio blob and return text
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AudioInput"
+      responses:
+        "200":
+          description: Transcription result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionResult"
+
+  /openai/conversations/{id}/story:
+    get:
+      operationId: getStory
+      tags: [ekome]
+      summary: Get the saved story for a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Story
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    post:
+      operationId: generateStory
+      tags: [ekome]
+      summary: Generate a story from the conversation (SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryOptions"
+      responses:
+        "200":
+          description: SSE stream of story content chunks
+          content:
+            text/event-stream: {}
+    patch:
+      operationId: updateStory
+      tags: [ekome]
+      summary: Update (edit) the saved story content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryUpdate"
+      responses:
+        "200":
+          description: Updated story
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+    delete:
+      operationId: deleteStory
+      tags: [ekome]
+      summary: Delete the story for a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /openai/stories:
+    get:
+      operationId: listStories
+      tags: [ekome]
+      summary: List all saved stories with their source conversation
+      responses:
+        "200":
+          description: List of stories with conversation info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StoryWithConversation"
+
+  /openai/stories/{id}:
+    patch:
+      operationId: updateStoryById
+      tags: [ekome]
+      summary: Update a story title or content by story ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StoryPatch"
+      responses:
+        "200":
+          description: Updated story
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Story"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteStoryById
+      tags: [ekome]
+      summary: Delete a story by story ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /openai/tts:
+    post:
+      operationId: synthesizeSpeech
+      tags: [openai]
+      summary: Convert text to speech and return audio/mpeg
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpeechInput"
+      responses:
+        "200":
+          description: MP3 audio buffer
+          content:
+            audio/mpeg: {}
+
+  /openai/memories:
+    get:
+      operationId: listMemories
+      tags: [ekome]
+      summary: List all extracted memories
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of memories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Memory"
+
+  /openai/search:
+    post:
+      operationId: searchMemory
+      tags: [ekome]
+      summary: Natural-language search across all conversations and memories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchInput"
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchResult"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        topic:
+          type: ["string", "null"]
+        summary:
+          type: ["string", "null"]
+        peopleMentioned:
+          type: ["string", "null"]
+        placesMentioned:
+          type: ["string", "null"]
+        titleLocked:
+          type: boolean
+        messageCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - titleLocked
+        - messageCount
+        - createdAt
+        - updatedAt
+
+    ConversationWithMessages:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        topic:
+          type: ["string", "null"]
+        summary:
+          type: ["string", "null"]
+        peopleMentioned:
+          type: ["string", "null"]
+        placesMentioned:
+          type: ["string", "null"]
+        titleLocked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/Message"
+        story:
+          $ref: "#/components/schemas/Story"
+      required:
+        - id
+        - title
+        - titleLocked
+        - createdAt
+        - updatedAt
+        - messages
+
+    ConversationInput:
+      type: object
+      properties:
+        title:
+          type: string
+      required:
+        - title
+
+    ConversationUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        topic:
+          type: string
+        summary:
+          type: string
+        peopleMentioned:
+          type: string
+        placesMentioned:
+          type: string
+        titleLocked:
+          type: boolean
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+
+    MessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    AudioInput:
+      type: object
+      properties:
+        audio:
+          type: string
+          description: Base64-encoded audio data
+        mimeType:
+          type: string
+          description: MIME type of the audio (e.g. audio/webm)
+      required:
+        - audio
+
+    TranscriptionResult:
+      type: object
+      properties:
+        text:
+          type: string
+      required:
+        - text
+
+    Story:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        title:
+          type: ["string", "null"]
+        content:
+          type: string
+        perspective:
+          type: string
+        tone:
+          type: string
+        format:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - content
+        - createdAt
+        - updatedAt
+
+    StoryWithConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        conversationTitle:
+          type: string
+        title:
+          type: ["string", "null"]
+        content:
+          type: string
+        perspective:
+          type: string
+        tone:
+          type: string
+        format:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - conversationTitle
+        - content
+        - createdAt
+        - updatedAt
+
+    StoryOptions:
+      type: object
+      properties:
+        perspective:
+          type: string
+          enum: [first_person, third_person]
+        tone:
+          type: string
+          enum: [reflective, warm, funny, adventurous, concise]
+        format:
+          type: string
+          enum: [short_story, journal_entry, long_form_chapter]
+      required:
+        - perspective
+        - tone
+        - format
+
+    StoryUpdate:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    StoryPatch:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+
+    SpeechInput:
+      type: object
+      properties:
+        text:
+          type: string
+        voice:
+          type: string
+          enum: [alloy, echo, fable, onyx, nova, shimmer]
+      required:
+        - text
+
+    Memory:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        type:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - type
+        - content
+        - createdAt
+
+    SearchInput:
+      type: object
+      properties:
+        query:
+          type: string
+      required:
+        - query
+
+    SearchResult:
+      type: object
+      properties:
+        answer:
+          type: string
+        conversations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Conversation"
+        memories:
+          type: array
+          items:
+            $ref: "#/components/schemas/Memory"
+      required:
+        - answer
+        - conversations
+        - memories
+
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
